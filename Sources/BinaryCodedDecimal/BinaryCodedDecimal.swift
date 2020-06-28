@@ -8,7 +8,7 @@ public extension Array where Element: BinaryInteger {
 	///
 	/// ```
 	/// let hexed = [100, 255].hexadecimalDescription()
-	/// // hexed is now "[0x64, 0xff]"
+	/// // hexed is "[0x64, 0xff]"
 	/// ```
 	/// - Parameter uppercase: Whether hexadecimal digits A-F should be uppercased.
 	/// - Returns: A string describing the array with the elements displayed as hexadecimal.
