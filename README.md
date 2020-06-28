@@ -1,3 +1,3 @@
 # BinaryCodedDecimal
 
-A description of this package.
+Convert from integers to and from binary coded decimal in Swift. 
