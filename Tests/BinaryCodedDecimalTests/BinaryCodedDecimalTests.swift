@@ -23,7 +23,7 @@ final class BinaryCodedDecimalTests: XCTestCase {
 		do {
 			_ = try UInt16(binaryCodedDecimal: [0x99, 0x1a])
 		} catch BCDError.bcdDigitTooBig {
-
+			// success
 		} catch {
 			XCTFail()
 		}
@@ -33,7 +33,7 @@ final class BinaryCodedDecimalTests: XCTestCase {
 		do {
 			_ = try 1234.binaryCodedDecimal(byteCount: 1)
 		} catch BCDError.notRepresentableInByteCount {
-
+			// success
 		} catch {
 			XCTFail()
 		}
@@ -43,7 +43,7 @@ final class BinaryCodedDecimalTests: XCTestCase {
 		do {
 			_ = try (-1).binaryCodedDecimal()
 		} catch BCDError.negative {
-
+			// success
 		} catch {
 			XCTFail()
 		}
@@ -53,7 +53,7 @@ final class BinaryCodedDecimalTests: XCTestCase {
 		do {
 			_ = try UInt8(binaryCodedDecimal: [0x03, 0x00])
 		} catch BCDError.bcdTooBigForType {
-
+			// success
 		} catch {
 			XCTFail()
 		}
