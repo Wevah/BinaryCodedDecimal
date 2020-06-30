@@ -1,28 +1,29 @@
 import Foundation
 
-enum BCDSign {
-	case unsigned
-	case positive
-	case negative
+enum BCDSign: UInt8 {
+
+	case unsigned = 0xf
+	case positive = 0xc
+	case negative = 0xd
 	case none
-}
 
-extension UInt8 {
-
-	var bcdSign: BCDSign {
-
-		switch self & 0xf {
-			case 0xa, 0xc, 0xe:
-				return .positive
-			case 0xb, 0xd:
-				return .negative
-			case 0xf:
-				return .unsigned
-			default:
-				return .none
+	init(_ value: UInt8?) {
+		if let value = value {
+			switch value & 0xf {
+				case 0xa, 0xc, 0xe:
+					self = .positive
+				case 0xb, 0xd:
+					self = .negative
+				case 0xf:
+					self = .unsigned
+				default:
+					self = .none
+			}
+		} else {
+			self = .none
 		}
-
 	}
+
 }
 
 extension Array where Element: BinaryInteger {
@@ -50,7 +51,7 @@ extension Array where Element: BinaryInteger {
 extension DataProtocol {
 
 	var bcdSign: BCDSign {
-		return self.last?.bcdSign ?? .none
+		return BCDSign(self.last)
 	}
 
 }
@@ -73,7 +74,7 @@ public enum BCDError: Error, CustomDebugStringConvertible {
 	case bcdDigitTooBig([UInt8])
 	case notRepresentableInByteCount(AnyInteger, count: Int, actualCount: Int)
 	case negative(AnyInteger)
-	case bcdNegative
+	case bcdNegative(Any.Type)
 	case bcdTooBigForType(Any.Type)
 	case bcdEmpty
 
@@ -85,22 +86,14 @@ public enum BCDError: Error, CustomDebugStringConvertible {
 				return "\(int) cannot be represented as BCD in \(count) byte(s) (requires at least \(actualCount) bytes)."
 			case let .negative(int):
 				return "\(int) is negative."
-			case .bcdNegative:
-				return "BCD represents a negative number."
+			case let .bcdNegative(type):
+				return "BCD represents a negative number, but \(type) is an unsigned type."
 			case let .bcdTooBigForType(type):
 				return "BCD representation is too large to fit into \(type)."
 			case .bcdEmpty:
 				return "BCD representation has zero length."
 		}
 	}
-
-}
-
-enum BCDTetrade {
-
-	static let unsigned: UInt8 = 0xf
-	static let positive: UInt8 = 0xc
-	static let negative: UInt8 = 0xd
 
 }
 
@@ -130,7 +123,7 @@ public extension FixedWidthInteger {
 		var multiplier: Int64 = 1
 
 		guard sign != .negative || Self.isSigned else {
-			throw BCDError.bcdNegative
+			throw BCDError.bcdNegative(Self.self)
 		}
 
 		let remaining: T.SubSequence
@@ -189,7 +182,7 @@ public extension FixedWidthInteger {
 		var bcd = [UInt8]()
 
 		if includeSign {
-			var byte: UInt8 = Self.isSigned ? (self < 0 ? BCDTetrade.negative : BCDTetrade.positive) : BCDTetrade.unsigned
+			var byte: UInt8 = Self.isSigned ? (self < 0 ? BCDSign.negative.rawValue : BCDSign.positive.rawValue) : BCDSign.unsigned.rawValue
 
 			while copy != 0 {
 				byte |= UInt8(copy % 10) << 4
