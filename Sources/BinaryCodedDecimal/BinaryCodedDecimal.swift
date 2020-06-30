@@ -106,6 +106,13 @@ public extension FixedWidthInteger {
 	/// let int = Int(binaryCodedDecimal: [0x16, 0x04])
 	/// // int is 1604
 	/// ```
+	///
+	/// If the low 4 bits of the last byte are in the range `0xa`-`0xf`, they are interpreted as
+	/// indicating the sign of the number:
+	///
+	/// - `0xa`, `0xc`, `0xe`: Positive
+	/// - `0xb`, `0xd`: Negative
+	/// - `0xf`: Unsigned (positive)
 	/// - Parameter bcd: The binary-coded-decimal representation.
 	/// - Throws:
 	///   - `BCDError.bcdDigitTooBig` if any nibble of `bcd` is greater than 9.
@@ -168,8 +175,12 @@ public extension FixedWidthInteger {
 	/// let bcd = 1604.binaryCodedDecimal()
 	/// // bcd is [0x16, 0x04]
 	/// ```
-	/// - Parameter byteCount: The byte count of the final representation.
-	///   If `0`, there is no limit or padding.
+	/// - Parameters:
+	///   - byteCount: The byte count of the final representation.
+	///   	If `0`, there is no limit or padding.
+	///   - includeSign: If true, store the sign in the low 4 bits of the result:
+	///
+	///     `0xc` if `self` is negative, `0xd` if `self` is positive and signed, or `0xf` if `self` is unsigned.
 	/// - Throws:
 	///   - `BCDError.negative` if `self` is negative.
 	///   - `BCDError.notRepresentableInByteCount` if `self` would require more than `byteCount` bytes.
