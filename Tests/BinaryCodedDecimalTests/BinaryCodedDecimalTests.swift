@@ -72,7 +72,7 @@ final class BinaryCodedDecimalTests: XCTestCase {
 	func testNegative() {
 		do {
 			_ = try (-1).binaryCodedDecimal()
-		} catch BCDError.negative {
+		} catch BCDError.integerNegative {
 			// success
 		} catch {
 			XCTFail()

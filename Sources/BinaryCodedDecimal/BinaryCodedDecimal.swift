@@ -73,7 +73,7 @@ public enum BCDError: Error, CustomDebugStringConvertible {
 
 	case bcdDigitTooBig([UInt8])
 	case notRepresentableInByteCount(AnyInteger, count: Int, actualCount: Int)
-	case negative(AnyInteger)
+	case integerNegative(AnyInteger)
 	case bcdNegative(Any.Type)
 	case bcdOutOfRangeForType(Any.Type)
 	case bcdEmpty
@@ -84,7 +84,7 @@ public enum BCDError: Error, CustomDebugStringConvertible {
 				return "A hex digit in \(bcd.hexadecimalDescription(uppercase: true)) is larger than 9."
 			case let .notRepresentableInByteCount(int, count: count, actualCount: actualCount):
 				return "\(int) cannot be represented as BCD in \(count) byte(s) (requires at least \(actualCount) bytes)."
-			case let .negative(int):
+			case let .integerNegative(int):
 				return "\(int) is negative."
 			case let .bcdNegative(type):
 				return "BCD represents a negative number, but \(type) is an unsigned type."
@@ -186,7 +186,7 @@ public extension FixedWidthInteger {
 	///   - `BCDError.notRepresentableInByteCount` if `self` would require more than `byteCount` bytes.
 	/// - Returns: A (big-endian) binary-coded-decimal representation of `self`, padded to `byteCount` bytes.
 	func binaryCodedDecimal(byteCount: Int = 0, includeSign: Bool = false) throws -> [UInt8] {
-		guard self >= 0 || includeSign else { throw BCDError.negative(AnyInteger(self)) }
+		guard self >= 0 || includeSign else { throw BCDError.integerNegative(AnyInteger(self)) }
 
 		var copy = self.magnitude
 
