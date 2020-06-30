@@ -82,7 +82,7 @@ final class BinaryCodedDecimalTests: XCTestCase {
 	func testTooBig() {
 		do {
 			_ = try UInt8(binaryCodedDecimal: [0x03, 0x00])
-		} catch BCDError.bcdTooBigForType {
+		} catch BCDError.bcdOutOfRangeForType {
 			// success
 		} catch {
 			XCTFail()

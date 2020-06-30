@@ -75,7 +75,7 @@ public enum BCDError: Error, CustomDebugStringConvertible {
 	case notRepresentableInByteCount(AnyInteger, count: Int, actualCount: Int)
 	case negative(AnyInteger)
 	case bcdNegative(Any.Type)
-	case bcdTooBigForType(Any.Type)
+	case bcdOutOfRangeForType(Any.Type)
 	case bcdEmpty
 
 	public var debugDescription: String {
@@ -88,7 +88,7 @@ public enum BCDError: Error, CustomDebugStringConvertible {
 				return "\(int) is negative."
 			case let .bcdNegative(type):
 				return "BCD represents a negative number, but \(type) is an unsigned type."
-			case let .bcdTooBigForType(type):
+			case let .bcdOutOfRangeForType(type):
 				return "BCD representation is too large to fit into \(type)."
 			case .bcdEmpty:
 				return "BCD representation has zero length."
@@ -115,7 +115,7 @@ public extension FixedWidthInteger {
 		
 		// 9 * 2 is the maximum digits of an Int64.
 		// UInt64 could be used here for unsigned types, but that would complexify the code.
-		guard bcd.count <= 10 else { throw BCDError.bcdTooBigForType(Self.self) }
+		guard bcd.count <= 10 else { throw BCDError.bcdOutOfRangeForType(Self.self) }
 
 		let sign = bcd.bcdSign
 
@@ -156,7 +156,7 @@ public extension FixedWidthInteger {
 			guard result < multiplier else { throw BCDError.bcdDigitTooBig([UInt8](bcd)) }
 		}
 
-		guard result <= Self.max else { throw BCDError.bcdTooBigForType(Self.self) }
+		guard result <= Self.max && result >= Self.min else { throw BCDError.bcdOutOfRangeForType(Self.self) }
 
 		self = Self(sign == .negative ? -result : result)
 	}
