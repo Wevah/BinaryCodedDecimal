@@ -1,6 +1,31 @@
 import Foundation
 
-public extension Array where Element: BinaryInteger {
+enum BCDSign {
+	case unsigned
+	case positive
+	case negative
+	case none
+}
+
+extension UInt8 {
+
+	var bcdSign: BCDSign {
+
+		switch self & 0xf {
+			case 0xa, 0xc, 0xe:
+				return .positive
+			case 0xb, 0xd:
+				return .negative
+			case 0xf:
+				return .unsigned
+			default:
+				return .none
+		}
+
+	}
+}
+
+extension Array where Element: BinaryInteger {
 
 	/// A hexadecimal representation of an array of integers.
 	///
@@ -18,6 +43,14 @@ public extension Array where Element: BinaryInteger {
 		}
 
 		return "[\(mapped.joined(separator: ", "))]"
+	}
+
+}
+
+extension DataProtocol {
+
+	var bcdSign: BCDSign {
+		return self.last?.bcdSign ?? .none
 	}
 
 }
@@ -40,7 +73,9 @@ public enum BCDError: Error, CustomDebugStringConvertible {
 	case bcdDigitTooBig([UInt8])
 	case notRepresentableInByteCount(AnyInteger, count: Int, actualCount: Int)
 	case negative(AnyInteger)
+	case bcdNegative
 	case bcdTooBigForType(Any.Type)
+	case bcdEmpty
 
 	public var debugDescription: String {
 		switch self {
@@ -50,17 +85,28 @@ public enum BCDError: Error, CustomDebugStringConvertible {
 				return "\(int) cannot be represented as BCD in \(count) byte(s) (requires at least \(actualCount) bytes)."
 			case let .negative(int):
 				return "\(int) is negative."
+			case .bcdNegative:
+				return "BCD represents a negative number."
 			case let .bcdTooBigForType(type):
 				return "BCD representation is too large to fit into \(type)."
+			case .bcdEmpty:
+				return "BCD representation has zero length."
 		}
 	}
 
 }
 
+enum BCDTetrade {
+
+	static let unsigned: UInt8 = 0xf
+	static let positive: UInt8 = 0xc
+	static let negative: UInt8 = 0xd
+
+}
 
 public extension FixedWidthInteger {
 
-	/// Create an integer from a (big-endian) binary-coded-decimal representation
+	/// Create an integer from a (packed, big-endian) binary-coded-decimal representation
 	///
 	/// Example:
 	/// ```
@@ -72,18 +118,41 @@ public extension FixedWidthInteger {
 	///   - `BCDError.bcdDigitTooBig` if any nibble of `bcd` is greater than 9.
 	///   - `BCDError.bcdTooBigForType` if the unencoded form of `bcd` can't fit into `Self`.
 	init<T>(binaryCodedDecimal bcd: T) throws where T: DataProtocol {
-		// 10 * 2 is the maximum digits of a UInt64; anything larger will never fit into an integer type.
+		guard !bcd.isEmpty else { throw BCDError.bcdEmpty }
+		
+		// 9 * 2 is the maximum digits of an Int64.
+		// UInt64 could be used here for unsigned types, but that would complexify the code.
 		guard bcd.count <= 10 else { throw BCDError.bcdTooBigForType(Self.self) }
 
-		var result: UInt64 = 0
-		var multiplier: UInt64 = 1
+		let sign = bcd.bcdSign
 
-		for byte in bcd.reversed() {
-			result += UInt64(byte & 0xf) * multiplier
+		var result: Int64 = 0
+		var multiplier: Int64 = 1
+
+		guard sign != .negative || Self.isSigned else {
+			throw BCDError.bcdNegative
+		}
+
+		let remaining: T.SubSequence
+
+		if sign != .none {
+			let byte = bcd.last!
+
+			result += Int64(byte >> 4)
+
+			multiplier *= 10
+
+			remaining = bcd.dropLast()
+		} else {
+			remaining = bcd[...]
+		}
+
+		for byte in remaining.reversed() {
+			result += Int64(byte & 0xf) * multiplier
 
 			guard result < multiplier * 10 else { throw BCDError.bcdDigitTooBig([UInt8](bcd)) }
 
-			result += UInt64(byte >> 4) * multiplier * 10
+			result += Int64(byte >> 4) * multiplier * 10
 
 			let multOverflow = multiplier.multipliedReportingOverflow(by: 100)
 
@@ -96,10 +165,10 @@ public extension FixedWidthInteger {
 
 		guard result <= Self.max else { throw BCDError.bcdTooBigForType(Self.self) }
 
-		self = Self(result)
+		self = Self(sign == .negative ? -result : result)
 	}
 
-	/// Create a binary-coded-decimal representation of an integer.
+	/// Create a (packed, big-endian) binary-coded-decimal representation of an integer.
 	///
 	/// Example:
 	/// ```
@@ -112,19 +181,36 @@ public extension FixedWidthInteger {
 	///   - `BCDError.negative` if `self` is negative.
 	///   - `BCDError.notRepresentableInByteCount` if `self` would require more than `byteCount` bytes.
 	/// - Returns: A (big-endian) binary-coded-decimal representation of `self`, padded to `byteCount` bytes.
-	func binaryCodedDecimal(byteCount: Int = 0) throws -> [UInt8] {
-		guard self >= 0 else { throw BCDError.negative(AnyInteger(self)) }
+	func binaryCodedDecimal(byteCount: Int = 0, includeSign: Bool = false) throws -> [UInt8] {
+		guard self >= 0 || includeSign else { throw BCDError.negative(AnyInteger(self)) }
 
-		var copy = self
+		var copy = self.magnitude
 
 		var bcd = [UInt8]()
 
-		while copy != 0 {
-			var byte: UInt8 = UInt8(copy % 10)
-			copy /= 10
-			byte |= UInt8(copy % 10) << 4
-			copy /= 10
-			bcd.insert(byte, at: 0)
+		if includeSign {
+			var byte: UInt8 = Self.isSigned ? (self < 0 ? BCDTetrade.negative : BCDTetrade.positive) : BCDTetrade.unsigned
+
+			while copy != 0 {
+				byte |= UInt8(copy % 10) << 4
+				copy /= 10
+				bcd.insert(byte, at: 0)
+
+				byte = UInt8(copy % 10)
+				copy /= 10
+			}
+
+			if byte != 0 {
+				bcd.insert(byte, at: 0)
+			}
+		} else {
+			while copy != 0 {
+				var byte: UInt8 = UInt8(copy % 10)
+				copy /= 10
+				byte |= UInt8(copy % 10) << 4
+				copy /= 10
+				bcd.insert(byte, at: 0)
+			}
 		}
 
 		if byteCount > 0 {
@@ -141,4 +227,5 @@ public extension FixedWidthInteger {
 
 		return bcd
 	}
+	
 }
