@@ -1,31 +1,5 @@
 import Foundation
 
-enum BCDSign: UInt8 {
-
-	case unsigned = 0xf
-	case positive = 0xc
-	case negative = 0xd
-	case none
-
-	init(_ value: UInt8?) {
-		if let value = value {
-			switch value & 0xf {
-				case 0xa, 0xc, 0xe:
-					self = .positive
-				case 0xb, 0xd:
-					self = .negative
-				case 0xf:
-					self = .unsigned
-				default:
-					self = .none
-			}
-		} else {
-			self = .none
-		}
-	}
-
-}
-
 extension Array where Element: BinaryInteger {
 
 	/// A hexadecimal representation of an array of integers.
@@ -44,6 +18,36 @@ extension Array where Element: BinaryInteger {
 		}
 
 		return "[\(mapped.joined(separator: ", "))]"
+	}
+
+}
+
+/// The sign specified in a binary-coded decimal representation.
+///
+/// See: [https://en.wikipedia.org/wiki/Binary-coded_decimal#Packed_BCD](https://en.wikipedia.org/wiki/Binary-coded_decimal#Packed_BCD)
+enum BCDSign: UInt8 {
+
+	case unsigned = 0xf
+	case positive = 0xc
+	case negative = 0xd
+	case none
+
+	init(_ value: UInt8?) {
+		guard let value = value else {
+			self = .none;
+			return
+		}
+
+		switch value & 0xf {
+			case 0xa, 0xc, 0xe:
+				self = .positive
+			case 0xb, 0xd:
+				self = .negative
+			case 0xf:
+				self = .unsigned
+			default:
+				self = .none
+		}
 	}
 
 }
