@@ -27,11 +27,20 @@ extension Array where Element: BinaryInteger {
 /// See: [https://en.wikipedia.org/wiki/Binary-coded_decimal#Packed_BCD](https://en.wikipedia.org/wiki/Binary-coded_decimal#Packed_BCD)
 enum BCDSign: UInt8 {
 
+	/// The number is unsigned.
 	case unsigned = 0xf
+	/// The number is signed and positive.
 	case positive = 0xc
+	/// The number is negative.
 	case negative = 0xd
+	/// The number doesn't specify a sign (unsigned/positive implied).
 	case none
 
+	/// Initializes a `BCDSign` from a UInt8, usually the last byte of a BCD representation.
+	///
+	/// - Note: The `rawValue` of the initialized sign might not be the same as the lower
+	/// tetrade of the byte passed in: for example, `0xa` initializes to `.positive`, whose `rawValue`
+	/// is `0xc`.
 	init(_ value: UInt8?) {
 		guard let value = value else {
 			self = .none;
@@ -54,6 +63,7 @@ enum BCDSign: UInt8 {
 
 extension DataProtocol {
 
+	/// Return the sign specified in the last tetrade of a binary-coded decimal representation.
 	var bcdSign: BCDSign {
 		return BCDSign(self.last)
 	}
@@ -73,6 +83,7 @@ public struct AnyInteger: CustomStringConvertible {
 
 }
 
+/// Various errors that can be thrown from the binary-coded decimal routines.
 public enum BCDError: Error, CustomDebugStringConvertible {
 
 	case bcdDigitTooBig([UInt8])
